@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import 'rbx/index.css'; //import in react file need styling
 import { Button, Container, Title } from 'rbx'; //and specify the components
+//import React, { useState, useEffect } from 'react'; //
+
 
 const schedule = {
   "title": "CS Courses for 2018-2019",
@@ -36,7 +38,7 @@ const schedule = {
 const terms = { F: 'Fall', W: 'Winter', S: 'Spring'};
 
 const Banner = ({ title }) => (
-  <Title>{ title }</Title>  //styled
+  <Title>{ title || '[loading...]' }</Title>  //styled, before data loaded
 );
 
 const getCourseTerm = course => (
@@ -59,12 +61,36 @@ const CourseList = ({ courses }) => (
   </Button.Group> //styled
 );
 
-const App = () =>  (
-  <Container>
-    <Banner title={ schedule.title } />
-    <CourseList courses={ schedule.courses } />
-  </Container>  //<Banner ???/> is like function call
-);
+/*const App = () =>  {  //became curly braces, because need more than one expression
+  const [schedule, setSchedule] = useState({ title: '', courses: [] }); //schedule is a state variable
+  (
+    <Container>
+      <Banner title={ schedule.title } />
+      <CourseList courses={ schedule.courses } />
+    </Container>  //<Banner ???/> is like function call
+  );
+};*/
+const App = () => {
+  const [schedule, setSchedule] = useState({ title: '', courses: [] });
+  const url = 'https://courses.cs.northwestern.edu/394/data/cs-courses.php';
+
+  useEffect(() => {
+    const fetchSchedule = async () => {
+      const response = await fetch(url);
+      if (!response.ok) throw response;
+      const json = await response.json();
+      setSchedule(json);
+    }
+    fetchSchedule();
+  }, [])
+
+  return (
+    <Container>
+      <Banner title={ schedule.title } />
+      <CourseList courses={ schedule.courses } />
+    </Container>
+  );
+};
 
 /*ReactDOM.render(
   <App />,
