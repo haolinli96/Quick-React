@@ -2,7 +2,24 @@ import React, { useState, useEffect } from 'react';
 import 'rbx/index.css'; //import in react file need styling
 import { Button, Container, Title } from 'rbx'; //and specify the components
 //import React, { useState, useEffect } from 'react'; //
+import firebase from 'firebase/app';
+import 'firebase/database';
+import "firebase/auth";
+import "firebase/firestore";
 
+const firebaseConfig = {
+  apiKey: "AIzaSyDHDZPGv9hcwndokwReXt7MLdJke2YFNX8",
+  authDomain: "scheduler-d3f1b.firebaseapp.com",
+  databaseURL: "https://scheduler-d3f1b.firebaseio.com",
+  projectId: "scheduler-d3f1b",
+  storageBucket: "scheduler-d3f1b.appspot.com",
+  messagingSenderId: "784874686575",
+  appId: "1:784874686575:web:2bc24244c43dc5008e659a",
+  measurementId: "G-Y9YBWDS31X"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database().ref();
 
 const schedule = {
   "title": "CS Courses for 2018-2019",
@@ -55,14 +72,35 @@ const hasConflict = (course, selected) => ( //没有内嵌<>就不用弄成{}的
   //some return true if at least one element in the array returns true
 );
 
-const Course = ({ course, state }) => ( 
+const moveCourse = course => {
+  const meets = prompt('Enter new meeting data, in this format:', course.meets);
+  if (!meets) return;
+  const {days} = timeParts(meets);
+  if (days) saveCourse(course, meets); 
+  else moveCourse(course);
+};
+
+const saveCourse = (course, meets) => {
+  db.child('courses').child(course.id).update({meets})
+    .catch(error => alert(error));
+};
+/*const Course = ({ course, state }) => ( 
   <Button color={ buttonColor(state.selected.includes(course)) }
     onClick={ () => state.toggle(course) }
     disabled={ hasConflict(course, state.selected) }
     >
     { getCourseTerm(course) } CS { getCourseNumber(course) }: { course.title }
   </Button>
-);
+);*/
+const Course = ({ course, state }) => (
+  <Button color={ buttonColor(state.selected.includes(course)) }
+      onClick={ () => state.toggle(course) }
+      onDoubleClick={ () => moveCourse(course) }
+      disabled={ hasConflict(course, state.selected) }
+      >
+      { getCourseTerm(course) } CS { getCourseNumber(course) }: { course.title }
+    </Button>
+  );
 
 const buttonColor = selected => (
   selected ? 'success' : null
@@ -76,9 +114,9 @@ const addCourseTimes = course => ({
 
 const addScheduleTimes = schedule => ({
   title: schedule.title,
-  courses: schedule.courses.map(addCourseTimes) 
-  //change the course section in schedule to add the parsed time
+  courses: Object.values(schedule.courses).map(addCourseTimes)
 });
+
 
 const meetsPat = /^ *((?:M|Tu|W|Th|F)+) +(\d\d?):(\d\d) *[ -] *(\d\d?):(\d\d) *$/;
 
@@ -163,24 +201,24 @@ const useSelection = () => {
 };*/
 const App = () => { //里面定义一堆const的时候用curly braces
   const [schedule, setSchedule] = useState({ title: '', courses: [] });
-  const url = 'https://courses.cs.northwestern.edu/394/data/cs-courses.php';
+  //const url = 'https://courses.cs.northwestern.edu/394/data/cs-courses.php';
 
+  
   useEffect(() => {
-    const fetchSchedule = async () => {
-      const response = await fetch(url);
-      if (!response.ok) throw response;
-      const json = await response.json();
-      setSchedule(addScheduleTimes(json));  //parse the course when adding
+    const handleData = snap => {
+      if (snap.val()) setSchedule(addScheduleTimes(snap.val()));
     }
-    fetchSchedule();
-  }, [])
+    db.on('value', handleData, error => alert(error));
+    return () => { db.off('value', handleData); };
+  }, []);
 
   return (
     <Container>
       <Banner title={ schedule.title } />
       <CourseList courses={ schedule.courses } />
     </Container>
-  );
+);
+
 };
 
 /*ReactDOM.render(
